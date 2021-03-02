@@ -1,0 +1,71 @@
+pipeline{
+    agent any
+    tools{
+        maven "Maven3"
+    }
+}
+stages{
+    stage('Start'){
+        steps{
+            checkout scm
+        }
+    }
+
+stage ('Build'){
+    steps{
+        bat "mvn install -DskipTests"
+    }
+}
+stage ('Unit Testing'){
+ steps{
+     bat "mvn test"
+ }
+}
+
+stage ('Sonar Analysis')
+{
+    steps {
+        withSonarQubeEnv("Test_Sonar"){
+            bat "mvn sonar:sonar"
+        }
+    }
+}
+stage ('Docker deployment Image'){
+    steps{
+        bat '/bin/docker build -t https://hub.docker.com/repository/docker/rupi090786/examnagp2:${Build_NUMBER} -f Dockerfile .'
+    }
+}
+
+stage ('Docker push image to repo'){
+    steps{
+        bat '/bin/docker push -t https://hub.docker.com/repository/docker/rupi090786/examnagp2:${Build_NUMBER}''
+    }
+}
+
+stage ('Delete Running Container'){
+    steps{
+        bat '''
+        ContainerID=$(docker ps | grep 6100 | cut -d "" -f 1)
+        if ($ContainerID)
+        then
+        docker stop $ContainerID
+        docker rm -f $ContainerID
+        fi
+        '''
+    }
+}
+
+stage ('DOCKER Deployment'){
+    steps{
+        bat 'docker run --name NAGPExam -d -p 6100:8080 https://hub.docker.com/repository/docker/rupi090786/examnagp2:${Build_NUMBER}'
+    }
+    
+}
+
+}
+
+
+
+
+
+
